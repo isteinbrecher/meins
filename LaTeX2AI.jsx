@@ -434,7 +434,10 @@ function L2A_Element(placed_item){
     // Get the position input for the LaTeX2AI element.
     this.get_pos_input = function() {
         // input form for LaTeX positioning
-        this.pos_input = prompt('Please enter positioning of the text', l2a_document.last_pos,'LaTeX2AI');
+        if (typeof this.pos_input == 'undefined'){
+            this.pos_input = l2a_document.last_pos;
+        }
+        this.pos_input = prompt('Please enter positioning of the text', this.pos_input,'LaTeX2AI');
         
         // check if there position input is valid
         this.get_posfac();
@@ -585,25 +588,29 @@ function L2A_Element(placed_item){
         
         // only do something if object is not rotated
         if ( !this.is_rotated() ){
+            
+            var old_pos = this.pos_input;
             this.get_pos_input();
+            if (old_pos !== this.pos_input){
             
-            // add new element to document
-            var template_doc = app.open(template_file);
-            var temp_item = template_doc.placedItems.getByName('LaTeX2AI_temp_' + this.pos_input);
-            var new_item = temp_item.duplicate(this.placed_item.parent);            
-            template_doc.close(SaveOptions.DONOTSAVECHANGES);
-            l2a_document.document.activate();
-            
-            // copy attributes
-            new_item.height = this.placed_item.height;
-            new_item.width = this.placed_item.width;
-            new_item.position = this.placed_item.position;
-            new_item.file = this.placed_item.file;
-            this.placed_item.remove();
-            this.placed_item = new_item;
-            
-            // write arrtibutes to new item
-            this.set_attributes();
+                // add new element to document
+                var template_doc = app.open(l2a_document.template_file);
+                var temp_item = template_doc.placedItems.getByName('LaTeX2AI_temp_' + this.pos_input);
+                var new_item = temp_item.duplicate(this.placed_item.parent);            
+                template_doc.close(SaveOptions.DONOTSAVECHANGES);
+                l2a_document.document.activate();
+                
+                // copy attributes
+                new_item.height = this.placed_item.height;
+                new_item.width = this.placed_item.width;
+                new_item.position = this.placed_item.position;
+                new_item.file = this.placed_item.file;
+                this.placed_item.remove();
+                this.placed_item = new_item;
+                
+                // write arrtibutes to new item
+                this.set_attributes();
+            }
         }
         
     }

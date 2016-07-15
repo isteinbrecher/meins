@@ -1,4 +1,14 @@
-﻿
+/*
+* My property description.  Like other pieces of your comment blocks, 
+* this can span multiple lines.
+* 
+* @property propertyName
+* @type {Object}
+* @default "foo"
+*/
+
+
+
 //////////////////////////////////////////////////////////////////////////////
 // UI                                                                       //
 //////////////////////////////////////////////////////////////////////////////
@@ -10,13 +20,10 @@ try {
     var temp_path = Folder.temp.fsName;
     l2a_document = new L2A_Document();
     
-    // check files and folderstructure
-    //check_structure()
-    
     // Create UI
     var dlg = new Window('dialog', 'LaTeX2AI');
     dlg.frameLocation = [100,100];
-    dlg.size = [250,160];
+    dlg.size = [250,200];
 
     // define text
     //dlg.intro = dlg.add('statictext', [20,20,150,40] );
@@ -25,12 +32,14 @@ try {
     // define buttons
     dlg.create = dlg.add('button', [0,0,250,40], 'new LaTeX2AI item');
     dlg.change = dlg.add('button', [0,40,250,80], 'change selected LaTeX2AI item');
-    dlg.box = dlg.add('button', [0,80,250,120], 'redo all LaTeX2AI boundary boxes');
-    dlg.redo = dlg.add('button', [0,120,250,160], 'redo all LaTeX2AI elements');
+    dlg.change_pos = dlg.add('button', [0,80,250,120], 'change selected LaTeX2AI placements');
+    dlg.box = dlg.add('button', [0,120,250,160], 'redo all LaTeX2AI boundary boxes');
+    dlg.redo = dlg.add('button', [0,160,250,200], 'redo all LaTeX2AI elements');
 
     // add events
     dlg.create.addEventListener ('click', create_l2a );
     dlg.change.addEventListener ('click', change_l2a );
+    dlg.change_pos.addEventListener ('click', change_pos_l2a );
     dlg.redo.addEventListener ('click', redo_l2a );
     dlg.box.addEventListener ('click', redo_bound_l2a );
     dlg.show();
@@ -56,10 +65,22 @@ function create_l2a( ) {
     }    
 }
 
-// creates new LaTeX2AI element
+// changes the LaTeX input for a element
 function change_l2a( ) {
     try {
         l2a_document.l2a_change();
+        app.redraw(); // redraw the illustrator window
+    }
+    catch(e) {
+        alert( e.message, 'LaTeX2AI Error', true);
+    }    
+}
+
+
+// changes the positioning for a LaTeX2AI element
+function change_pos_l2a( ) {
+    try {
+        l2a_document.l2a_change_pos();
         app.redraw(); // redraw the illustrator window
     }
     catch(e) {
@@ -108,7 +129,7 @@ function L2A_Document(){
     }
 
 
-    // Changes selectet LaTeX2AI objects.
+    // Changes selectet LaTeX2AI objects LaTeX code.
     this.l2a_change = function(){
         
         this.load_l2a_elements();
@@ -119,6 +140,21 @@ function L2A_Document(){
     
         for ( i = 0; i < this.l2a_elements_selected.length; i++ ) {
             this.l2a_elements_selected[i].l2a_change_element();
+        }
+    }
+
+
+    // Changes selectet LaTeX2AI objects positioning.
+    this.l2a_change_pos = function(){
+        
+        this.load_l2a_elements();
+            
+        if (this.l2a_elements_selected.length == 0) {
+            throw new Error('No LaTeX2AI elements selected!');
+        }
+    
+        for ( i = 0; i < this.l2a_elements_selected.length; i++ ) {
+            this.l2a_elements_selected[i].l2a_change_element_pos();
         }
     }
 
@@ -485,12 +521,25 @@ function L2A_Element(placed_item){
     }
 
 
+    // Check if object is rotated or not.
+    this.is_rotated = function() {
+        
+        var err = 0.001; // max error for equality to be detected
+        if ( Math.abs(this.placed_item.matrix.mValueB) < err){
+            return false;
+        }
+        else {
+            return true;
+        }
+        
+    }
+
     // Sets the boundary box for the LaTeX2AI element.
     this.set_bound = function() {
         var err = 0.001; // max error for equality to be detected
         
         // only do something if object is not rotated
-        if ( Math.abs(this.placed_item.matrix.mValueB) < err){
+        if ( !this.is_rotated() ){
         
             // variables
             var M, X; // matrix
@@ -529,6 +578,34 @@ function L2A_Element(placed_item){
             this.relink_item();
             this.set_bound();
         }
+    }
+
+    // Changes the l2a element positioning
+    this.l2a_change_element_pos = function() {
+        
+        // only do something if object is not rotated
+        if ( !this.is_rotated() ){
+            this.get_pos_input();
+            
+            // add new element to document
+            var template_doc = app.open(template_file);
+            var temp_item = template_doc.placedItems.getByName('LaTeX2AI_temp_' + this.pos_input);
+            var new_item = temp_item.duplicate(this.placed_item.parent);            
+            template_doc.close(SaveOptions.DONOTSAVECHANGES);
+            l2a_document.document.activate();
+            
+            // copy attributes
+            new_item.height = this.placed_item.height;
+            new_item.width = this.placed_item.width;
+            new_item.position = this.placed_item.position;
+            new_item.file = this.placed_item.file;
+            this.placed_item.remove();
+            this.placed_item = new_item;
+            
+            // write arrtibutes to new item
+            this.set_attributes();
+        }
+        
     }
 
 
